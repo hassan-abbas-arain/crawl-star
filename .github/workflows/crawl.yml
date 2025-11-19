@@ -53,7 +53,7 @@ jobs:
         psql "$PG_CONN" -c "\copy (SELECT r.id, r.full_name, s.stargazers_count, s.updated_at FROM repo_stars s JOIN repos r ON r.id=s.repo_id) TO 'repos.csv' CSV HEADER"
 
     - name: Upload artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: repo-stars
         path: repos.csv
