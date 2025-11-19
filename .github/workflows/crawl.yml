@@ -1,0 +1,59 @@
+name: Crawl GitHub Stars
+
+on:
+  workflow_dispatch:   # manual trigger
+  schedule:
+    - cron: "0 2 * * *"  # daily at 2:00 UTC
+
+jobs:
+  crawl:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_DB: crawl
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: 123
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d crawl"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v3
+
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.11"
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r crawler/requirements.txt
+
+    - name: Setup database schema
+      run: |
+        psql "host=localhost port=5432 dbname=crawl user=postgres password=123" -f schema/setup.sql
+
+    - name: Crawl GitHub stars
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        PG_CONN: "host=localhost port=5432 dbname=crawl user=postgres password=123"
+      run: |
+        python crawler/crawl_stars.py
+
+    - name: Dump DB to CSV
+      run: |
+        psql "$PG_CONN" -c "\copy (SELECT r.id, r.full_name, s.stargazers_count, s.updated_at FROM repo_stars s JOIN repos r ON r.id=s.repo_id) TO 'repos.csv' CSV HEADER"
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: repo-stars
+        path: repos.csv
