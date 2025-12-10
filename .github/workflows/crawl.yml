@@ -3,7 +3,8 @@ name: Crawl GitHub Stars
 on:
   workflow_dispatch:   # manual trigger
   schedule:
-    - cron: "0 2 * * *"  # daily at 2:00 UTC
+  
+    #- cron: "0 2 * * *"  # daily at 2:00 UTC
 
 jobs:
   crawl:
